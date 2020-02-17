@@ -1,4 +1,4 @@
-FROM debian:buster-lite
+FROM debian:buster-slim
 MAINTAINER Anderson Calixto <andersonbr@gmail.com>
 
 ENV UNREAL_VERSION=5.0.3.1
