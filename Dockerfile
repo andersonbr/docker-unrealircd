@@ -67,7 +67,8 @@ RUN cd /tmp \
         ;
 
 # clean
-RUN apt remove -y build-essential \
+RUN export DEBIAN_FRONTEND=noninteractive \
+                apt remove -y build-essential \
                 cmake \
                 file \
                 gcc \
