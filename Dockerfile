@@ -4,8 +4,7 @@ MAINTAINER Anderson Calixto <andersonbr@gmail.com>
 ENV UNREAL_VERSION=5.0.3.1
 ENV ANOPE_VERSION=2.0.7
 
-ADD config.settings /
-
+# dependencies
 RUN export DEBIAN_FRONTEND=noninteractive \
         && apt update \
         && apt upgrade -y \
@@ -30,14 +29,16 @@ RUN export DEBIAN_FRONTEND=noninteractive \
         && apt-get clean \
         ;
 
+# user and group
 RUN groupadd -r unreal \
         && useradd -r -g unreal unreal \
         && mkdir -p /home/unreal \
         && chown unreal:unreal /home/unreal \
         ;
 
+# unrealircd
 USER unreal
-
+ADD config.settings /tmp
 RUN cd /tmp \
         && gpg --keyserver keys.gnupg.net --recv-keys 0xA7A21B0A108FF4A9 \
         && wget "https://www.unrealircd.org/unrealircd4/unrealircd-${UNREAL_VERSION}.tar.gz" \
@@ -45,18 +46,13 @@ RUN cd /tmp \
         && gpg --verify unrealircd-${UNREAL_VERSION}.tar.gz.asc unrealircd-${UNREAL_VERSION}.tar.gz \
         && tar xvzf unrealircd-${UNREAL_VERSION}.tar.gz \
         && cd unrealircd-${UNREAL_VERSION} \
+        && cp /tmp/config.settings . \
         && ./Config -quick -nointro \
         ;
-COPY unrealircd.conf /home/unreal/unrealircd/conf/
-COPY config.cache /tmp/
 
-USER root
-
-RUN chown unreal /tmp/config.cache \
-        && chown unreal /home/unreal/unrealircd/conf/unrealircd.conf \
-        ;
-
+# anope
 USER unreal
+COPY config.cache /tmp/
 
 RUN cd /tmp \
         && wget "https://github.com/anope/anope/releases/download/${ANOPE_VERSION}/anope-${ANOPE_VERSION}-source.tar.gz" \
@@ -70,7 +66,7 @@ RUN cd /tmp \
         && make install \
         ;
 
-# CLEAN
+# clean
 RUN apt remove -y build-essential \
                 cmake \
                 file \
