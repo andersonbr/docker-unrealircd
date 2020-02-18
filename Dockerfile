@@ -51,14 +51,13 @@ RUN cd /tmp \
         ;
 
 # anope
-USER unreal
-COPY config.cache /tmp/
+ADD config.cache /tmp/
 
 RUN cd /tmp \
         && wget "https://github.com/anope/anope/releases/download/${ANOPE_VERSION}/anope-${ANOPE_VERSION}-source.tar.gz" \
         && tar xvzf anope-${ANOPE_VERSION}-source.tar.gz \
         && cd anope-${ANOPE_VERSION}-source \
-        && mv /tmp/config.cache . \
+        && cp /tmp/config.cache . \
         && printf "m_mysql.cpp\nm_ssl_openssl.cpp\nm_sql_oper.cpp\nm_sql_authentication.cpp\nm_sql_log.cpp\nq\n"|./extras \
         && ./Config -quick \
         && cd build \
@@ -67,6 +66,7 @@ RUN cd /tmp \
         ;
 
 # clean
+USER root
 RUN export DEBIAN_FRONTEND=noninteractive \
                 apt remove -y build-essential \
                 cmake \
@@ -81,7 +81,11 @@ RUN export DEBIAN_FRONTEND=noninteractive \
                 zlib1g-dev \
                 default-libmysqlclient-dev \
         && apt-get clean \
+        && rm -rf /tmp/config.settings \
+        && rm -rf /tmp/config.cache \
         && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
         ;
 
+# command
+USER unreal
 CMD /home/unreal/unrealircd/unrealircd start
