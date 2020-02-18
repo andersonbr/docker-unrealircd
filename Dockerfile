@@ -48,6 +48,8 @@ RUN cd /tmp \
         && cd unrealircd-${UNREAL_VERSION} \
         && cp /tmp/config.settings . \
         && ./Config -quick -nointro \
+        && make \
+        && make install \
         ;
 
 # anope
@@ -88,4 +90,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 
 # command
 USER unreal
-CMD /home/unreal/unrealircd/unrealircd start
+
+WORKDIR /home/unreal/unrealircd/
+
+CMD /home/unreal/unrealircd/bin/unrealircd -F
