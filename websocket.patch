@@ -1,0 +1,68 @@
+--- src/modules/websocket.c     2020-02-11 21:12:15.000000000 -0300
++++ src/modules/websocket_new.c 2020-02-21 07:37:37.383179245 -0300
+@@ -107,6 +107,54 @@
+  #define CheckNull(x) if ((!(x)->ce_vardata) || (!(*((x)->ce_vardata)))) { config_error("%s:%i: missing parameter", (x)->ce_fileptr->cf_filename, (x)->ce_varlinenum); errors++; continue; }
+ #endif
+
++
++/* Does the CGI:IRC host spoofing work */
++void dowebircvhost(Client *client, char *ip, char *host)
++{
++       char scratch[64];
++
++       if (host && !strcmp(ip, host))
++               host = NULL; /* host did not resolve, make it NULL */
++
++       /* STEP 1: Update client->local->ip
++          inet_pton() returns 1 on success, 0 on bad input, -1 on bad AF */
++       if ((inet_pton(AF_INET, ip, scratch) != 1) &&
++           (inet_pton(AF_INET6, ip, scratch) != 1))
++       {
++               /* then we have an invalid IP */
++               exit_client(client, NULL, "Invalid IP address");
++               return;
++       }
++
++       /* STEP 2: Update GetIP() */
++       safe_strdup(client->ip, ip);
++
++       /* STEP 3: Update client->local->hostp */
++       /* (free old) */
++       if (client->local->hostp)
++       {
++               unreal_free_hostent(client->local->hostp);
++               client->local->hostp = NULL;
++       }
++       /* (create new) */
++       if (host && verify_hostname(host))
++               client->local->hostp = unreal_create_hostent(host, client->ip);
++
++       /* STEP 4: Update sockhost
++          Make sure that if this any IPv4 address is _not_ prefixed with
++          "::ffff:" by using Inet_ia2p().
++        */
++       // Hmm I ignored above warning. May be bad during transition period.
++       strlcpy(client->local->sockhost, client->ip, sizeof(client->local->sockhost));
++
++       /* blacklist_start_check() */
++       if (RCallbacks[CALLBACKTYPE_BLACKLIST_CHECK] != NULL)
++               RCallbacks[CALLBACKTYPE_BLACKLIST_CHECK]->func.intfunc(client);
++
++       check_banned(client, 0);
++}
++
++
+ int websocket_config_test(ConfigFile *cf, ConfigEntry *ce, int type, int *errs)
+ {
+        int errors = 0;
+@@ -488,6 +536,10 @@
+             r;
+             r = websocket_handshake_helper(NULL, 0, &key, &value, &lastloc, &end_of_request))
+        {
++               if (!strcasecmp(key, "X-Forwarded-For"))
++               {
++                       dowebircvhost(client, value, value);
++               }
+                if (!strcasecmp(key, "Sec-WebSocket-Key"))
+                {
+                        if (strchr(value, ':'))
